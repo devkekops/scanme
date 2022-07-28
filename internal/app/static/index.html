@@ -59,11 +59,18 @@
                     </div>
                     <div class="col-sm">
                         <h3>Шаблоны</h3>
-                        <li v-for="template in templateList">
-                            {{template}}
+                        <li v-for="(item, index) in checkedTemplates" :key="index">
+                            <input type="checkbox" :id="item.name" v-model="item.checked">
+                            <label :for="item.name">{{item.name}}</label>
                         </li>
                     </div>
                 </div>
+            </div>
+            <div class="container">
+                <h3>Результаты</h3>
+                <li v-for="result in results">
+                    {{result}}
+                </li>
             </div>
         </div>
     </div>
@@ -73,7 +80,9 @@
         el: '#app',
         data: {
           domainList: [],
-          templateList: []
+          templateList: [],
+          results: [],
+          checkedTemplates: []
         },
         methods: {
             search: function() {
@@ -86,8 +95,15 @@
             },
             scan: function() {
                 console.log('scan')
-                this.$http.post(`http://127.0.0.1:8080/api/scan`, this.domainList).then(resp => {
+                scanTemplates = []
+                for (var i = 0; i < this.checkedTemplates.length; i++) {
+                    if (this.checkedTemplates[i].checked === true) {
+                        scanTemplates.push(this.checkedTemplates[i].name)
+                    }
+                }
+                this.$http.post(`http://127.0.0.1:8080/api/scan`, {domains: this.domainList, templates: scanTemplates}).then(resp => {
                     console.log(JSON.stringify(resp.data))
+                    this.results = resp.data
                 }).catch((resp) => {
                     console.log('err:', resp)
                 })
@@ -104,6 +120,9 @@
             this.$http.get(`http://127.0.0.1:8080/api/getTemplates`, this.domainList).then(resp => {
                 console.log(JSON.stringify(resp.data))
                 this.templateList = resp.data
+                for (var i = 0; i < this.templateList.length; i++) {
+                    this.checkedTemplates.push({name: this.templateList[i], checked: true})
+                }
             }).catch((resp) => {
                 console.log('err:', resp)
             })

@@ -7,7 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path"
+	"path/filepath"
 
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
@@ -20,6 +20,11 @@ type BaseHandler struct {
 	*chi.Mux
 	fs http.Handler
 	df domainfinder.DomainFinder
+}
+
+type Scan struct {
+	Domains   []string `json:"domains"`
+	Templates []string `json:"templates"`
 }
 
 func NewBaseHandler(df domainfinder.DomainFinder) *BaseHandler {
@@ -72,8 +77,11 @@ func (bh *BaseHandler) getTemplates() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var templates []string
 
-		home, _ := os.UserHomeDir()
-		catalog := path.Join(home, "nuclei-templates")
+		//home, _ := os.UserHomeDir()
+		//catalog := path.Join(home, "nuclei-templates")
+		cwd, _ := os.Getwd()
+		catalog := filepath.Join(cwd, "/internal/app/templates")
+
 		files, err := ioutil.ReadDir(catalog)
 		if err != nil {
 			log.Println(err)
@@ -111,8 +119,8 @@ func (bh *BaseHandler) searchSubdomains() http.HandlerFunc {
 			return
 		}
 
-		//subdomains := bh.df.Search(domains)
-		subdomains := []string{"https://mx3.sbermarket.ru", "https://www.gift.sbermarket.ru", "https://exponea-gw.sbermarket.ru", "https://adfs.sbermarket.ru", "https://retailers.sbermarket.ru", "https://www.job.sbermarket.ru", "https://calculator.sbermarket.ru", "https://sendcrm.sbermarket.ru", "https://retailers-gw.sbermarket.ru", "https://shp-gw.sbermarket.ru", "https://imgproxy.sbermarket.ru", "https://cdn.sbermarket.ru", "https://happymars.sbermarket.ru", "https://store-plan.sbermarket.ru", "https://www.nedelyadobroty.sbermarket.ru", "https://read.sendcrm.sbermarket.ru", "https://naumen-wfm.sbermarket.ru", "https://api-sberapp.sbermarket.ru", "https://admin-bs.sbermarket.ru", "https://api-deliveryclub.sbermarket.ru", "https://admin-gw.sbermarket.ru", "https://sm-university.sbermarket.ru"}
+		subdomains := bh.df.Search(domains)
+		//subdomains := []string{"https://mx3.sbermarket.ru", "https://www.gift.sbermarket.ru", "https://exponea-gw.sbermarket.ru"}
 		buf, err := json.Marshal(subdomains)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -126,22 +134,25 @@ func (bh *BaseHandler) searchSubdomains() http.HandlerFunc {
 		if err != nil {
 			log.Println(err)
 		}
-
 	}
 }
 
 func (bh *BaseHandler) scan() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		var domains []string
-		decoder := json.NewDecoder(req.Body)
-		err := decoder.Decode(&domains)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+		var newScan Scan
+
+		if err := json.NewDecoder(req.Body).Decode(&newScan); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
 			log.Println(err)
 			return
 		}
 
-		scanner.Scan(domains)
+		results := scanner.Scan(newScan.Domains, newScan.Templates)
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
+		_, err := w.Write(results)
+		if err != nil {
+			log.Println(err)
+		}
 	}
 }

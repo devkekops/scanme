@@ -1,11 +1,15 @@
 package scanner
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path"
+	"path/filepath"
 
+	"github.com/google/uuid"
 	"github.com/logrusorgru/aurora"
 	"go.uber.org/ratelimit"
 
@@ -26,7 +30,44 @@ import (
 	"github.com/projectdiscovery/nuclei/v2/pkg/types"
 )
 
-func Scan(domains []string) {
+func copyTemplates(templates []string) string {
+	id := uuid.New()
+	tmpDirName := "tmp_" + id.String()
+	if err := os.Mkdir(tmpDirName, os.ModePerm); err != nil {
+		log.Fatal(err)
+	}
+
+	cwd, _ := os.Getwd()
+	tmpDirPath := filepath.Join(cwd, tmpDirName)
+	allTemplatesPath := filepath.Join(cwd, "/internal/app/templates")
+
+	for _, template := range templates {
+		from, err := os.Open(filepath.Join(allTemplatesPath, template))
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer from.Close()
+
+		to, err := os.OpenFile(filepath.Join(tmpDirPath, template), os.O_RDWR|os.O_CREATE, 0777)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer to.Close()
+
+		_, err = io.Copy(to, from)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	return tmpDirPath
+}
+
+func Scan(domains []string, templates []string) []byte {
+	tmpDirPath := copyTemplates(templates)
+	defer os.RemoveAll(tmpDirPath)
+
+	var events []*output.ResultEvent
 	cache := hosterrorscache.New(30, hosterrorscache.DefaultMaxHostsCount)
 	defer cache.Close()
 
@@ -37,6 +78,7 @@ func Scan(domains []string) {
 	outputWriter := testutils.NewMockOutputWriter()
 	outputWriter.WriteCallback = func(event *output.ResultEvent) {
 		fmt.Printf("Got Result: %v\n", event)
+		events = append(events, event)
 	}
 
 	defaultOpts := types.DefaultOptions()
@@ -53,11 +95,8 @@ func Scan(domains []string) {
 	}
 	defer interactClient.Close()
 
-	//home, _ := os.UserHomeDir()
-	//catalog := catalog.New(path.Join(home, "nuclei-templates"))
-	currentDir, _ := os.Getwd()
-	catalog := catalog.New(path.Join(currentDir, "/internal/app/scanner/templates"))
-	fmt.Println(catalog)
+	home, _ := os.UserHomeDir()
+	catalog := catalog.New(path.Join(home, "nuclei-templates"))
 	//catalog := catalog.New("../../internal/app/scanner/templates")
 	executerOpts := protocols.ExecuterOptions{
 		Output:          outputWriter,
@@ -84,6 +123,9 @@ func Scan(domains []string) {
 	if err != nil {
 		log.Fatalf("Could not read config: %s\n", err)
 	}
+
+	configObject.TemplatesDirectory = tmpDirPath
+
 	store, err := loader.New(loader.NewConfig(defaultOpts, configObject, catalog, executerOpts))
 	if err != nil {
 		log.Fatalf("Could not create loader client: %s\n", err)
@@ -95,4 +137,6 @@ func Scan(domains []string) {
 	engine.WorkPool().Wait() // Wait for the scan to finish
 
 	fmt.Println("finish")
+	buf, err := json.Marshal(events)
+	return buf
 }
