@@ -148,9 +148,15 @@ func (bh *BaseHandler) scan() http.HandlerFunc {
 		}
 
 		results := scanner.Scan(newScan.Domains, newScan.Templates)
+		if len(results) == 0 {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		buf, err := json.Marshal(results)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, err := w.Write(results)
+		_, err = w.Write(buf)
 		if err != nil {
 			log.Println(err)
 		}

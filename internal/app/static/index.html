@@ -68,9 +68,12 @@
             </div>
             <div class="container">
                 <h3>Результаты</h3>
-                <li v-for="result in results">
-                    {{result}}
-                </li>
+                <div v-if="results === 'Нет результатов'">Нет результатов</div>
+                <div v-else>
+                    <li v-for="result in results">
+                        {{result}}
+                    </li>
+                </div>
             </div>
         </div>
     </div>
@@ -102,8 +105,12 @@
                     }
                 }
                 this.$http.post(`http://127.0.0.1:8080/api/scan`, {domains: this.domainList, templates: scanTemplates}).then(resp => {
-                    console.log(JSON.stringify(resp.data))
-                    this.results = resp.data
+                    if (resp.status == 200) {
+                        console.log(JSON.stringify(resp.data))
+                        this.results = resp.data
+                    } else if (resp.status == 204) {
+                        this.results = "Нет результатов"
+                    }
                 }).catch((resp) => {
                     console.log('err:', resp)
                 })

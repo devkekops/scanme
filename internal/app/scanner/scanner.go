@@ -1,7 +1,6 @@
 package scanner
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -63,7 +62,7 @@ func copyTemplates(templates []string) string {
 	return tmpDirPath
 }
 
-func Scan(domains []string, templates []string) []byte {
+func Scan(domains []string, templates []string) []*output.ResultEvent {
 	tmpDirPath := copyTemplates(templates)
 	defer os.RemoveAll(tmpDirPath)
 
@@ -77,6 +76,8 @@ func Scan(domains []string, templates []string) []byte {
 
 	outputWriter := testutils.NewMockOutputWriter()
 	outputWriter.WriteCallback = func(event *output.ResultEvent) {
+		event.Request = ""
+		event.Response = ""
 		fmt.Printf("Got Result: %v\n", event)
 		events = append(events, event)
 	}
@@ -137,6 +138,5 @@ func Scan(domains []string, templates []string) []byte {
 	engine.WorkPool().Wait() // Wait for the scan to finish
 
 	fmt.Println("finish")
-	buf, err := json.Marshal(events)
-	return buf
+	return events
 }
