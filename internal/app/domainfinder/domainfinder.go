@@ -48,5 +48,9 @@ func (r *DomainFinder) Search(domains []string) []string {
 		out[i] = "https://" + out[i]
 	}
 
+	if len(out) > 0 {
+		out = out[:len(out)-1]
+	}
+
 	return out
 }

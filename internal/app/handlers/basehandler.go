@@ -80,7 +80,7 @@ func (bh *BaseHandler) getTemplates() http.HandlerFunc {
 		//home, _ := os.UserHomeDir()
 		//catalog := path.Join(home, "nuclei-templates")
 		cwd, _ := os.Getwd()
-		catalog := filepath.Join(cwd, "/internal/app/templates")
+		catalog := filepath.Join(cwd, "/templates")
 
 		files, err := ioutil.ReadDir(catalog)
 		if err != nil {

@@ -39,7 +39,7 @@ func copyTemplates(templates []string) string {
 
 	cwd, _ := os.Getwd()
 	tmpDirPath := filepath.Join(cwd, tmpDirName)
-	allTemplatesPath := filepath.Join(cwd, "/internal/app/templates")
+	allTemplatesPath := filepath.Join(cwd, "/templates")
 
 	for _, template := range templates {
 		from, err := os.Open(filepath.Join(allTemplatesPath, template))
