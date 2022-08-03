@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
+	"github.com/gorilla/websocket"
 
 	"github.com/devkekops/scanme/internal/app/domainfinder"
 	"github.com/devkekops/scanme/internal/app/scanner"
@@ -20,6 +21,11 @@ type BaseHandler struct {
 	*chi.Mux
 	fs http.Handler
 	df domainfinder.DomainFinder
+}
+
+type Message struct {
+	Event string          `json:"event"`
+	Msg   json.RawMessage `json:"msg"`
 }
 
 type Scan struct {
@@ -43,8 +49,59 @@ func NewBaseHandler(df domainfinder.DomainFinder) *BaseHandler {
 	bh.Get("/api/getTemplates", bh.getTemplates())
 	bh.Post("/api/search", bh.searchSubdomains())
 	bh.Post("/api/scan", bh.scan())
+	bh.Handle("/ws", bh.wsEndpoint())
 
 	return bh
+}
+
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
+
+func (bh *BaseHandler) wsEndpoint() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		connection, _ := upgrader.Upgrade(w, r, nil)
+
+		for {
+			_, message, _ := connection.ReadMessage()
+
+			//connection.WriteMessage(websocket.TextMessage, message)
+			go messageHandler(message, bh, connection)
+		}
+	}
+}
+
+func messageHandler(message []byte, bh *BaseHandler, conn *websocket.Conn) {
+	if len(message) > 0 {
+		fmt.Println(string(message))
+		var inMsg Message
+		err := json.Unmarshal(message, &inMsg)
+		if err != nil {
+			return
+		}
+		switch inMsg.Event {
+		case "search":
+			var domains []string
+			json.Unmarshal(inMsg.Msg, &domains)
+			//fmt.Println(domains)
+			subdomains := bh.df.Search(domains)
+
+			buf, _ := json.Marshal(subdomains)
+			outMsg := Message{Event: "search", Msg: buf}
+			conn.WriteJSON(outMsg)
+
+		case "scan":
+			var newScan Scan
+			json.Unmarshal(inMsg.Msg, &newScan)
+			//fmt.Println(newScan)
+			results := scanner.Scan(newScan.Domains, newScan.Templates)
+			buf, _ := json.Marshal(results)
+			outMsg := Message{Event: "scan", Msg: buf}
+			conn.WriteJSON(outMsg)
+		}
+	}
 }
 
 func (bh *BaseHandler) getIndex() http.HandlerFunc {
