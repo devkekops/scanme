@@ -53,6 +53,8 @@
                 <div class="row">
                     <div class="col-sm">
                         <h3>Домены</h3>
+                        <div>{{searchStatus}}</div>
+                        <br>
                         <li v-for="domain in domainList">
                             {{domain}}
                         </li>
@@ -68,12 +70,11 @@
             </div>
             <div class="container">
                 <h3>Результаты</h3>
-                <div v-if="results === 'Нет результатов'">Нет результатов</div>
-                <div v-else>
-                    <li v-for="result in results">
-                        {{result}}
-                    </li>
-                </div>
+                <div>{{scanStatus}}</div>
+                <br>
+                <li v-for="result in results">
+                    {{result}}
+                </li>
             </div>
         </div>
     </div>
@@ -86,7 +87,9 @@
           domainList: [],
           templateList: [],
           results: [],
-          checkedTemplates: []
+          checkedTemplates: [],
+          scanStatus: "",
+          searchStatus: ""
         },
         methods: {
             search: function() {
@@ -139,14 +142,24 @@
             this.connection = new WebSocket("ws://127.0.0.1:8080/ws");
 
             this.connection.onmessage = (event) => {
-                console.log(event.data);
+                //console.log(event.data);
                 const obj = JSON.parse(event.data);
-                console.log(obj.event);
-                console.log(obj.msg);
+                //console.log(obj.event);
+                //console.log(obj.msg);
                 if (String(obj.event) === "search") {
-                        this.domainList = obj.msg
+                    if (obj.msg === "start" || obj.msg == "finish") {
+                        this.searchStatus = obj.msg
+                    }
+                    else {
+                        this.domainList = this.domainList.concat(obj.msg)
+                    }
                 } else if (String(obj.event) === "scan") {
-                        this.results = obj.msg
+                    if (obj.msg === "start" || obj.msg == "finish") {
+                        this.scanStatus = obj.msg
+                    }
+                    else {
+                        this.results.push(obj.msg)
+                    }
                 }
             };
         }

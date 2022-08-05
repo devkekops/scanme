@@ -30,27 +30,30 @@ func NewSubfinder() *DomainFinder {
 	return &DomainFinder{runner: runnerInstance}
 }
 
-func (r *DomainFinder) Search(domains []string) []string {
-	inputStr := strings.Join(domains, "\n")
-	buf := bytes.Buffer{}
-	err := r.runner.EnumerateMultipleDomains(context.Background(), strings.NewReader(inputStr), []io.Writer{&buf})
-	if err != nil {
-		log.Fatal(err)
+func (r *DomainFinder) Search(domains []string, subdomainCh chan []string) {
+	for _, domain := range domains {
+		buf := bytes.Buffer{}
+		err := r.runner.EnumerateSingleDomain(context.Background(), domain, []io.Writer{&buf})
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		data, err := io.ReadAll(&buf)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		out := strings.Split(string(data), "\n")
+		for i, _ := range out {
+			out[i] = "https://" + out[i]
+		}
+
+		if len(out) > 0 {
+			out = out[:len(out)-1]
+		}
+
+		subdomainCh <- out
 	}
 
-	data, err := io.ReadAll(&buf)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	out := strings.Split(string(data), "\n")
-	for i, _ := range out {
-		out[i] = "https://" + out[i]
-	}
-
-	if len(out) > 0 {
-		out = out[:len(out)-1]
-	}
-
-	return out
+	close(subdomainCh)
 }

@@ -32,7 +32,7 @@ import (
 func copyTemplates(templates []string) string {
 	id := uuid.New()
 	tmpDirName := "tmp_" + id.String()
-	if err := os.Mkdir(tmpDirName, os.ModePerm); err != nil {
+	if err := os.Mkdir(tmpDirName, 0777); err != nil {
 		log.Fatal(err)
 	}
 
@@ -62,11 +62,11 @@ func copyTemplates(templates []string) string {
 	return tmpDirPath
 }
 
-func Scan(domains []string, templates []string) []*output.ResultEvent {
+func Scan(domains []string, templates []string, resultCh chan *output.ResultEvent) {
+	fmt.Println("start scan")
 	tmpDirPath := copyTemplates(templates)
 	defer os.RemoveAll(tmpDirPath)
 
-	var events []*output.ResultEvent
 	cache := hosterrorscache.New(30, hosterrorscache.DefaultMaxHostsCount)
 	defer cache.Close()
 
@@ -78,8 +78,9 @@ func Scan(domains []string, templates []string) []*output.ResultEvent {
 	outputWriter.WriteCallback = func(event *output.ResultEvent) {
 		event.Request = ""
 		event.Response = ""
-		fmt.Printf("Got Result: %v\n", event)
-		events = append(events, event)
+		//fmt.Printf("Got Result: %v\n", event)
+		//events = append(events, event)
+		resultCh <- event
 	}
 
 	defaultOpts := types.DefaultOptions()
@@ -138,5 +139,5 @@ func Scan(domains []string, templates []string) []*output.ResultEvent {
 	engine.WorkPool().Wait() // Wait for the scan to finish
 
 	fmt.Println("finish")
-	return events
+	close(resultCh)
 }

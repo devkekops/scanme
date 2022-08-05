@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -12,6 +11,7 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/websocket"
+	"github.com/projectdiscovery/nuclei/v2/pkg/output"
 
 	"github.com/devkekops/scanme/internal/app/domainfinder"
 	"github.com/devkekops/scanme/internal/app/scanner"
@@ -47,8 +47,8 @@ func NewBaseHandler(df domainfinder.DomainFinder) *BaseHandler {
 	bh.Get("/", bh.getIndex())
 	bh.Get("/api/getDomains", bh.getDomains())
 	bh.Get("/api/getTemplates", bh.getTemplates())
-	bh.Post("/api/search", bh.searchSubdomains())
-	bh.Post("/api/scan", bh.scan())
+	//bh.Post("/api/search", bh.searchSubdomains())
+	//bh.Post("/api/scan", bh.scan())
 	bh.Handle("/ws", bh.wsEndpoint())
 
 	return bh
@@ -75,7 +75,7 @@ func (bh *BaseHandler) wsEndpoint() http.HandlerFunc {
 
 func messageHandler(message []byte, bh *BaseHandler, conn *websocket.Conn) {
 	if len(message) > 0 {
-		fmt.Println(string(message))
+		//fmt.Println(string(message))
 		var inMsg Message
 		err := json.Unmarshal(message, &inMsg)
 		if err != nil {
@@ -83,22 +83,51 @@ func messageHandler(message []byte, bh *BaseHandler, conn *websocket.Conn) {
 		}
 		switch inMsg.Event {
 		case "search":
-			var domains []string
-			json.Unmarshal(inMsg.Msg, &domains)
-			//fmt.Println(domains)
-			subdomains := bh.df.Search(domains)
-
-			buf, _ := json.Marshal(subdomains)
+			buf, _ := json.Marshal("start")
 			outMsg := Message{Event: "search", Msg: buf}
 			conn.WriteJSON(outMsg)
 
+			var domains []string
+			json.Unmarshal(inMsg.Msg, &domains)
+			//fmt.Println(domains)
+			subdomainCh := make(chan []string)
+			go bh.df.Search(domains, subdomainCh)
+			for {
+				subdomains, ok := <-subdomainCh
+				if !ok {
+					break
+				}
+				buf, _ := json.Marshal(subdomains)
+				outMsg := Message{Event: "search", Msg: buf}
+				conn.WriteJSON(outMsg)
+			}
+
+			buf, _ = json.Marshal("finish")
+			outMsg = Message{Event: "search", Msg: buf}
+			conn.WriteJSON(outMsg)
+
 		case "scan":
+			buf, _ := json.Marshal("start")
+			outMsg := Message{Event: "scan", Msg: buf}
+			conn.WriteJSON(outMsg)
+
 			var newScan Scan
 			json.Unmarshal(inMsg.Msg, &newScan)
-			//fmt.Println(newScan)
-			results := scanner.Scan(newScan.Domains, newScan.Templates)
-			buf, _ := json.Marshal(results)
-			outMsg := Message{Event: "scan", Msg: buf}
+
+			resultCh := make(chan *output.ResultEvent)
+			go scanner.Scan(newScan.Domains, newScan.Templates, resultCh)
+			for {
+				result, ok := <-resultCh
+				if !ok {
+					break
+				}
+				buf, _ := json.Marshal(result)
+				outMsg := Message{Event: "scan", Msg: buf}
+				conn.WriteJSON(outMsg)
+			}
+
+			buf, _ = json.Marshal("finish")
+			outMsg = Message{Event: "scan", Msg: buf}
 			conn.WriteJSON(outMsg)
 		}
 	}
@@ -147,7 +176,7 @@ func (bh *BaseHandler) getTemplates() http.HandlerFunc {
 		for _, f := range files {
 			templates = append(templates, f.Name())
 		}
-		fmt.Println(templates)
+		//fmt.Println(templates)
 
 		buf, err := json.Marshal(templates)
 		if err != nil {
@@ -165,7 +194,7 @@ func (bh *BaseHandler) getTemplates() http.HandlerFunc {
 	}
 }
 
-func (bh *BaseHandler) searchSubdomains() http.HandlerFunc {
+/*func (bh *BaseHandler) searchSubdomains() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		var domains []string
 		decoder := json.NewDecoder(req.Body)
@@ -218,4 +247,4 @@ func (bh *BaseHandler) scan() http.HandlerFunc {
 			log.Println(err)
 		}
 	}
-}
+}*/
