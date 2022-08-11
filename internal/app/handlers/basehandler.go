@@ -44,7 +44,8 @@ func NewBaseHandler(df domainfinder.DomainFinder) *BaseHandler {
 	}
 	bh.Use(middleware.Logger)
 
-	bh.Get("/", bh.getIndex())
+	//bh.Get("/", bh.getIndex())
+	bh.Handle("/*", fs)
 	bh.Get("/api/getDomains", bh.getDomains())
 	bh.Get("/api/getTemplates", bh.getTemplates())
 	//bh.Post("/api/search", bh.searchSubdomains())
@@ -133,15 +134,15 @@ func messageHandler(message []byte, bh *BaseHandler, conn *websocket.Conn) {
 	}
 }
 
-func (bh *BaseHandler) getIndex() http.HandlerFunc {
+/*func (bh *BaseHandler) getIndex() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		bh.fs.ServeHTTP(w, r)
 	}
-}
+}*/
 
 func (bh *BaseHandler) getDomains() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		var domains = []string{"sbermarket.ru", "sbermarket.tech"}
+		var domains = []string{"sbermarket.ru", "sbermarket.tech", "instamart.ru", "sbmt.io"}
 
 		buf, err := json.Marshal(domains)
 		if err != nil {
