@@ -16,6 +16,8 @@
     <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue-resource@1.5.3"></script>
     <!-- Optional JavaScript -->
+    <!--Axios-->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <!-- jQuery first, then Popper.js, then Bootstrap JS -->
     <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
     integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
@@ -28,25 +30,12 @@
     crossorigin="anonymous"></script>
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="bg-light">
+<body>
 
 <div class="container" id="app">
     <div class="py-5 text-center">
         <img class="d-block mx-auto mb-4" src="https://www.shareicon.net/download/2015/09/20/104335_avatar.svg"
              alt="" height="100px">
-        <!--<div id="app0">
-            {{message}}
-            <li v-for="domain in domainList">
-                {{domain}}
-            </li>
-            <br>
-            <div class="row justify-content-center mb-4">
-                <div class="btn-group" role="group" aria-label="Basic example">
-                    <button type="button" class="btn btn-outline-primary" v-on:click="search">search</button>
-                    <button type="button" class="btn btn-outline-primary" v-on:click="scan">scan</button>
-                </div>
-            </div>
-        </div>-->
         <div id="app">
             <button v-on:click="search">search</button>
             <button v-on:click="scan">scan</button>
@@ -62,10 +51,14 @@
                     </div>
                     <div class="col-sm">
                         <h3>Шаблоны</h3>
-                        <li v-for="(item, index) in checkedTemplates" :key="index">
-                            <input type="checkbox" :id="item.name" v-model="item.checked">
-                            <label :for="item.name">{{item.name}}</label>
+                        <li v-for="template in templateList">
+                            <input type="checkbox" v-bind:value="template" v-model="scanTemplates"> {{template}}
                         </li>
+                    <br>
+                          <button type="button" class="btn btn-primary"  @click='checkAll()'> {{ btnText }} </button>
+                        <br><br><br>
+                        <span>Отмеченные правила: {{ scanTemplates }}</span>
+
                     </div>
                 </div>
             </div>
@@ -73,98 +66,19 @@
                 <h3>Результаты</h3>
                 <div>{{scanStatus}}</div>
                 <br>
+                <ul>
                 <li v-for="result in results">
                     {{result}}
                 </li>
+                </ul>
             </div>
         </div>
     </div>
 </div>
-<script>
-    var app = new Vue({
-        el: '#app',
-        data: {
-          connection: null,
-          domainList: [],
-          templateList: [],
-          results: [],
-          checkedTemplates: [],
-          scanStatus: "",
-          searchStatus: ""
-        },
-        methods: {
-            search: function() {
-                /*this.$http.post(`http://127.0.0.1:8080/api/search`, this.domainList).then(resp => {
-                    console.log(JSON.stringify(resp.data))
-                    this.domainList = resp.data
-                }).catch((resp) => {
-                    console.log('err:', resp)
-                })*/
-                this.connection.send(JSON.stringify({event: "search", msg: this.domainList}));
-            },
-            scan: function() {
-                scanTemplates = []
-                for (var i = 0; i < this.checkedTemplates.length; i++) {
-                    if (this.checkedTemplates[i].checked === true) {
-                        scanTemplates.push(this.checkedTemplates[i].name)
-                    }
-                }
-                /*this.$http.post(`http://127.0.0.1:8080/api/scan`, {domains: this.domainList, templates: scanTemplates}).then(resp => {
-                    if (resp.status == 200) {
-                        console.log(JSON.stringify(resp.data))
-                        this.results = resp.data
-                    } else if (resp.status == 204) {
-                        this.results = "Нет результатов"
-                    }
-                }).catch((resp) => {
-                    console.log('err:', resp)
-                })*/
-                this.connection.send(JSON.stringify({event: "scan", msg: {domains: this.domainList, templates: scanTemplates}}));
-            }
-        },
-        created: function() {
-            this.$http.get(`http://127.0.0.1:8080/api/getDomains`, this.domainList).then(resp => {
-                console.log(JSON.stringify(resp.data))
-                this.domainList = resp.data
-            }).catch((resp) => {
-                console.log('err:', resp)
-            });
 
-            this.$http.get(`http://127.0.0.1:8080/api/getTemplates`, this.domainList).then(resp => {
-                console.log(JSON.stringify(resp.data))
-                this.templateList = resp.data
-                for (var i = 0; i < this.templateList.length; i++) {
-                    this.checkedTemplates.push({name: this.templateList[i], checked: true})
-                }
-            }).catch((resp) => {
-                console.log('err:', resp)
-            });
+<!-- BEGIN: APP JS-->
+<script src="app.js"></script>
+<!-- END: APP JS-->
 
-            this.connection = new WebSocket("ws://127.0.0.1:8080/ws");
-
-            this.connection.onmessage = (event) => {
-                //console.log(event.data);
-                const obj = JSON.parse(event.data);
-                //console.log(obj.event);
-                //console.log(obj.msg);
-                if (String(obj.event) === "search") {
-                    if (obj.msg === "start" || obj.msg == "finish") {
-                        this.searchStatus = obj.msg
-                    }
-                    else {
-                        this.domainList = this.domainList.concat(obj.msg)
-                    }
-                } else if (String(obj.event) === "scan") {
-                    if (obj.msg === "start" || obj.msg == "finish") {
-                        this.scanStatus = obj.msg
-                    }
-                    else {
-                        this.results.push(obj.msg)
-                    }
-                }
-            };
-        }
-    })
-</script>
 </body>
 </html>
