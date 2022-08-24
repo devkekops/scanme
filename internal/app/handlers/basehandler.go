@@ -53,7 +53,7 @@ func NewBaseHandler(df domainfinder.DomainFinder) *BaseHandler {
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: false,
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
-	  }))
+	}))
 
 	//bh.Get("/", bh.getIndex())
 	bh.Handle("/*", fs)
@@ -153,7 +153,7 @@ func messageHandler(message []byte, bh *BaseHandler, conn *websocket.Conn) {
 
 func (bh *BaseHandler) getDomains() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		var domains = []string{"sbermarket.ru", "sbermarket.tech", "instamart.ru", "sbmt.io"}
+		var domains = []string{"https://sbermarket.ru", "https://sbermarket.tech", "https://instamart.ru", "https://sbmt.io"}
 
 		buf, err := json.Marshal(domains)
 		if err != nil {

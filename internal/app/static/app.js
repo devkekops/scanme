@@ -48,6 +48,7 @@ var app = new Vue({
             //         scanTemplates.push(this.checkedTemplates[i])
             //     }
             // }
+            this.results = [];
             this.connection.send(JSON.stringify({event: "scan", msg: {domains: this.domainList, templates: this.scanTemplates}}));
         }
     },

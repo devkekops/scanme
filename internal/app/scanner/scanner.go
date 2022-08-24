@@ -121,12 +121,16 @@ func Scan(domains []string, templates []string, resultCh chan *output.ResultEven
 	}
 	executerOpts.WorkflowLoader = workflowLoader
 
-	configObject, err := config.ReadConfiguration()
+	/*configObject, err := config.ReadConfiguration()
 	if err != nil {
 		log.Fatalf("Could not read config: %s\n", err)
 	}
+	configObject.TemplatesDirectory = tmpDirPath*/
 
-	configObject.TemplatesDirectory = tmpDirPath
+	configObject := &config.Config{
+		TemplatesDirectory: tmpDirPath,
+		//NucleiVersion:      "2.6.5",
+	}
 
 	store, err := loader.New(loader.NewConfig(defaultOpts, configObject, catalog, executerOpts))
 	if err != nil {

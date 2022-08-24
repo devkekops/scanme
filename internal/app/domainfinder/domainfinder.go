@@ -32,6 +32,7 @@ func NewSubfinder() *DomainFinder {
 
 func (r *DomainFinder) Search(domains []string, subdomainCh chan []string) {
 	for _, domain := range domains {
+		domain = strings.TrimPrefix(domain, "https://")
 		buf := bytes.Buffer{}
 		err := r.runner.EnumerateSingleDomain(context.Background(), domain, []io.Writer{&buf})
 		if err != nil {
