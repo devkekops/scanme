@@ -14,7 +14,7 @@ var app = new Vue({
     },
     mounted() {
         axios
-          .get('http://127.0.0.1:8080/api/getTemplates')
+          .get('http://0.0.0.0:8080/api/getTemplates')
           .then(response => (this.templateList = response.data));
       },
     methods: {
@@ -53,13 +53,13 @@ var app = new Vue({
         }
     },
     created: function() {
-        this.$http.get(`http://127.0.0.1:8080/api/getDomains`, this.domainList).then(resp => {
+        this.$http.get(`http://0.0.0.0:8080/api/getDomains`, this.domainList).then(resp => {
             this.domainList = resp.data
         }).catch((resp) => {
             console.log('err:', resp)
         });
 
-        this.connection = new WebSocket("ws://127.0.0.1:8080/ws");
+        this.connection = new WebSocket("ws://0.0.0.0:8080/ws");
 
         this.connection.onmessage = (event) => {
             //console.log(event.data);
@@ -79,6 +79,8 @@ var app = new Vue({
                 }
                 else {
                     this.results.push(obj.msg)
+                    console.log(this.results)
+                    console.log(this.results.length)
                 }
             }
         };

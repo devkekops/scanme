@@ -35,7 +35,8 @@ type Scan struct {
 }
 
 func NewBaseHandler(df domainfinder.DomainFinder) *BaseHandler {
-	root := "./internal/app/static"
+	cwd, _ := os.Getwd()
+	root := filepath.Join(cwd, "/static")
 	fs := http.FileServer(http.Dir(root))
 
 	bh := &BaseHandler{
